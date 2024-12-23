@@ -29,6 +29,7 @@ struct NewButton: View {
         
 
             ZStack {
+                
                 RoundedRectangle(cornerRadius: 5)
                     .fill(.blue.opacity(0.6).gradient)
                     .shadow(color: .blue.opacity(0.5), radius: 6, x: 0, y: 7)
