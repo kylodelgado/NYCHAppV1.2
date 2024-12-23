@@ -9,7 +9,37 @@ import SwiftUI
 
 struct ProgressBar: View {
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        VStack {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(.blue)
+                    .opacity(1)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(lineWidth: 2)
+                            .fill(.ultraThickMaterial)
+                    }
+
+                HStack(alignment: .top) {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.thinMaterial)
+                        .containerRelativeFrame(.horizontal) { width, axis in
+                            width * 0.7
+                        }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text("In Progress")
+                    .font(.subheadline)
+                    .foregroundStyle(.white)
+            }
+            .containerRelativeFrame(.horizontal) { width, axis in
+                width * 0.9
+            }
+            .containerRelativeFrame(.vertical) { height, axis in
+                height * 0.03
+            }
+        }
     }
 }
 

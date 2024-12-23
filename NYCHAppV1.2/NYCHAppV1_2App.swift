@@ -6,12 +6,17 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct NYCHAppV1_2App: App {
+   
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+              
         }
+        
     }
 }
