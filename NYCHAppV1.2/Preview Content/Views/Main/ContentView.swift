@@ -12,6 +12,7 @@ enum Route: Hashable {
     case newRepair
     case quickQuote
     case contact
+    case existingCustomer
 }
 
 struct ContentView: View {
@@ -19,6 +20,7 @@ struct ContentView: View {
     @Query private var customerInfo: [CustomerInformation]
     @State private var navigationPath = NavigationPath()
     @State private var showContactSheet = false  // For contact options
+    @State private var showCustomerSelection = false
     
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -35,54 +37,88 @@ struct ContentView: View {
                     
                     // Quick Actions Section
                     VStack(spacing: 16) {
-                        Text("Quick Actions")
+                        Text(!showCustomerSelection ? "Quick Actions" : "New Repair")
                             .font(.headline)
                             .foregroundColor(.gray)
                         
                         // Primary Actions Grid
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 16) {
-                            // Status Check Button
-                            ActionCard(
-                                title: "Check Status",
-                                iconName: "magnifyingglass.circle.fill",
-                                description: "Track repair progress",
-                                color: .blue
-                            ) {
-                                navigationPath.append(Route.statusCheck)
+                        VStack {
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: 16) {
+                                if showCustomerSelection {
+                                    // New Customer Button
+                                    ActionCard(
+                                        title: "New Customer",
+                                        iconName: "person.badge.plus",
+                                        description: "Register as a new customer",
+                                        color: .blue
+                                    ) {
+                                        withAnimation {
+                                            navigationPath.append(Route.newRepair)
+                                            showCustomerSelection = false
+                                        }
+                                    }
+                                    
+                                    // Existing Customer Button
+                                    ActionCard(
+                                        title: "Existing Customer",
+                                        iconName: "person.fill.checkmark",
+                                        description: "Sign in for repair",
+                                        color: .green
+                                    ) {
+                                        withAnimation {
+                                            navigationPath.append(Route.existingCustomer)
+                                            showCustomerSelection = false
+                                        }
+                                    }
+                                } else {
+                                    // Default Quick Actions
+                                    ActionCard(
+                                        title: "Check Status",
+                                        iconName: "magnifyingglass.circle.fill",
+                                        description: "Track repair progress",
+                                        color: .blue
+                                    ) {
+                                        navigationPath.append(Route.statusCheck)
+                                    }
+                                    
+                                    ActionCard(
+                                        title: "New Repair",
+                                        iconName: "wrench.and.screwdriver.fill",
+                                        description: "Start repair request",
+                                        color: .green
+                                    ) {
+                                        withAnimation {
+                                            showCustomerSelection = true  // Show customer selection with animation
+                                        }
+                                    }
+                                    
+                                    ActionCard(
+                                        title: "Your Tickets",
+                                        iconName: "ticket.fill",
+                                        description: "View active tickets",
+                                        color: .red
+                                    ) {
+                                        navigationPath.append(Route.contact)
+                                    }
+                                    
+                                    ActionCard(
+                                        title: "Contact Us",
+                                        iconName: "phone.circle.fill",
+                                        description: "Get in touch",
+                                        color: .orange
+                                    ) {
+                                        showContactSheet = true
+                                    }
+                                }
                             }
-                            
-                            // New Repair Button
-                            ActionCard(
-                                title: "New Repair",
-                                iconName: "wrench.and.screwdriver.fill",
-                                description: "Start repair request",
-                                color: .green
-                            ) {
-                                navigationPath.append(Route.newRepair)
-                            }
-                            
-                            // Quick Quote Button
-                            ActionCard(
-                                title: "Quick Quote",
-                                iconName: "dollarsign.circle.fill",
-                                description: "Get price estimate",
-                                color: .purple
-                            ) {
-                                navigationPath.append(Route.quickQuote)
-                            }
-                            
-                            // Contact Button
-                            ActionCard(
-                                title: "Contact Us",
-                                iconName: "phone.circle.fill",
-                                description: "Get in touch",
-                                color: .orange
-                            ) {
-                                showContactSheet = true
-                            }
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
+                            .padding(.top, showCustomerSelection ? 40 : 0)
                         }
                     }
                     .padding()
@@ -114,7 +150,16 @@ struct ContentView: View {
                                         Spacer()
                                     
                 }
+                
             }
+            .onTapGesture {
+                if showCustomerSelection {
+                    withAnimation {
+                        showCustomerSelection = false
+                    }
+                }
+            }
+            
             .navigationTitle("Welcome")
             .navigationDestination(for: Route.self) { route in
                 switch route {
@@ -126,6 +171,8 @@ struct ContentView: View {
                     QuickQuoteView() // We'll need to create this
                 case .contact:
                     ContactView() // We'll need to create this
+                case .existingCustomer:
+                    ExistingCustomerView()
                 }
             }
             .sheet(isPresented: $showContactSheet) {
