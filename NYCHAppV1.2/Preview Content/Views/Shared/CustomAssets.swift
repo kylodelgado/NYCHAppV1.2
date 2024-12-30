@@ -7,9 +7,26 @@
 
 import SwiftUI
 
+
 struct CustomAssets: View {
+    
+    @State var xPosition: CGFloat = 0
+    @State var yPosition: CGFloat = 0
+    
     var body: some View {
-        NewButton()
+        VStack {
+            
+            Text("My Position is x \(xPosition), y \(yPosition)")
+                .foregroundStyle(.blue)
+                .offset(x: xPosition, y: yPosition)
+            
+            Button ("Go Up"){
+                yPosition -= 10
+            }.buttonStyle(CorporateButtonStyle(isEnabled: true))
+                .padding()
+            
+            
+        }
     }
 }
 
