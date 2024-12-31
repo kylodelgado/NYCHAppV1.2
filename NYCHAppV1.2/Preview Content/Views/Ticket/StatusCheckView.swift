@@ -5,14 +5,12 @@
 //  Created by Brandon Delgado on 12/11/24.
 //
 
+
 import SwiftUI
-
-
 
 struct StatusCheckView: View {
     @StateObject private var viewModel = StatusCheckViewModel()
     @Environment(\.dismiss) private var dismiss
-    
     var body: some View {
         ZStack {
             GradientBackground()
@@ -88,6 +86,8 @@ struct StatusCheckView: View {
         }
     }
 }
+
+
 
 // Custom Search Field Style
 struct CustomSearchFieldStyle: TextFieldStyle {

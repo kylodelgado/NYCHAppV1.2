@@ -154,7 +154,7 @@ struct ContentView: View {
             }
             .onTapGesture {
                 if showCustomerSelection {
-                    withAnimation {
+                    withAnimation(.smooth) {
                         showCustomerSelection = false
                     }
                 }
@@ -168,15 +168,15 @@ struct ContentView: View {
                 case .newRepair:
                     SubmitCustomerInfoView()
                 case .quickQuote:
-                    QuickQuoteView() // We'll need to create this
+                    QuickQuoteView() // need to create this
                 case .contact:
-                    ContactView() // We'll need to create this
+                    ContactView() // need to create this
                 case .existingCustomer:
                     ExistingCustomerView()
                 }
             }
             .sheet(isPresented: $showContactSheet) {
-                ContactOptionsSheet() // We'll create this
+                ContactOptionsSheet() // create this
             }.preferredColorScheme(.light)
         }
     }
@@ -204,7 +204,7 @@ struct ActionCard: View {
                 .foregroundColor(.gray)
                 .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
