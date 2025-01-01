@@ -10,66 +10,43 @@ import SwiftUI
 
 struct StatusCheckView: View {
     @StateObject private var viewModel = StatusCheckViewModel()
-    @Environment(\.dismiss) private var dismiss
+   
+    
     var body: some View {
         ZStack {
             GradientBackground()
             
             VStack(spacing: 20) {
-                // Status Search Card
-                VStack(spacing: 16) {
-                    Text("Enter Repair Ticket Number")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                    
-                    HStack {
-                        TextField("Ticket Number", text: $viewModel.searchText)
-                            .textFieldStyle(CustomSearchFieldStyle())
-                            .keyboardType(.numberPad)
-                        
-                        Button {
-                            Task {
-                                await viewModel.searchTicket()
+                // Search Card (remains the same)
+                SearchCard(viewModel: viewModel)
+                
+                // Results Section
+                ScrollView {
+                    if viewModel.isLoading {
+                        LoadingView()
+                    } else if let ticket = viewModel.ticket {
+                        // Single ticket view
+                        TicketDetailsCard(ticket: ticket)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else if !viewModel.customerTickets.isEmpty {
+                        // List of tickets
+                        VStack(spacing: 12) {
+                            Text("Found \(viewModel.customerTickets.count) tickets")
+                                .font(.headline)
+                                .foregroundColor(.gray)
+                                .padding(.top)
+                            
+                            ForEach(viewModel.customerTickets, id: \.id) { ticket in
+                                NavigationLink(destination: TicketDetailsCard(ticket: ticket)) {
+                                    CustomerTicketRow(ticket: ticket)
+                                        .padding(.horizontal)
+                                }
                             }
-                        } label: {
-                            Image(systemName: "magnifyingglass.circle.fill")
-                                .font(.system(size: 44))
-                                .foregroundColor(.blue)
                         }
-                        .disabled(viewModel.searchText.isEmpty || viewModel.isLoading)
+                    } else {
+                        SearchEmptyStateView()
                     }
-                    .padding(.horizontal)
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 15)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                )
-                .padding(.horizontal)
-                
-                // Ticket Details Section
-                if viewModel.isLoading {
-                    LoadingView()
-                } else if let ticket = viewModel.ticket {
-                    TicketDetailsCard(ticket: ticket)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else {
-                    // Instructions or empty state
-                    VStack(spacing: 12) {
-                        Image(systemName: "ticket")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text("Enter your ticket number to check repair status")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-                }
-                
-                Spacer()
             }
             .padding(.top)
         }
@@ -84,6 +61,123 @@ struct StatusCheckView: View {
                 Text(error)
             }
         }
+    }
+}
+
+struct SearchCard: View {
+    @ObservedObject var viewModel: StatusCheckViewModel
+    @FocusState private var isTextFieldFocused: Bool
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Enter Ticket # or Phone Number")
+                .font(.headline)
+                .foregroundColor(.gray)
+            
+            HStack {
+                TextField("Search", text: $viewModel.searchText)
+                    .textFieldStyle(CustomSearchFieldStyle())
+                    .focused($isTextFieldFocused)
+                    .keyboardType(.numberPad)
+                    .onSubmit {
+                        isTextFieldFocused = false
+                    }
+                
+                Button {
+                    Task {
+                        await viewModel.searchTicket()
+                    }
+                    isTextFieldFocused = false
+                } label: {
+                    Image(systemName: "magnifyingglass.circle.fill")
+                        .font(.system(size: 44))
+                        .foregroundColor(.blue)
+                }
+                .disabled(viewModel.searchText.isEmpty || viewModel.isLoading)
+            }
+            .padding(.horizontal)
+            .onTapGesture {
+                isTextFieldFocused = false
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        )
+        .padding(.horizontal)
+    }
+}
+
+struct CustomerTicketRow: View {
+    let ticket: TicketDetails
+    
+    var displayProblemType: String {
+        if let type = ticket.problem_type {
+            return type == "API" ? "General Repair" : type
+        }
+        return "General Repair"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Ticket #\(ticket.number)")
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                    Text(ticket.subject)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
+                
+                StatusBadge(status: ticket.status)
+            }
+            
+            Divider()
+            
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "wrench.and.screwdriver")
+                        .foregroundColor(.gray)
+                    
+                    Text(displayProblemType)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
+                
+                Text(ticket.createdAt.formatted(date: .abbreviated, time: .shortened))
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+    }
+}
+
+
+
+struct SearchEmptyStateView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "ticket")
+                .font(.system(size: 50))
+                .foregroundColor(.gray.opacity(0.5))
+            
+            Text("Enter a ticket number or phone number")
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
     }
 }
 
@@ -228,33 +322,50 @@ struct StatusBadge: View {
     
     var statusColor: Color {
         switch status.lowercased() {
+        // New/Initial States - Blue
         case "new", "marcus", "mike":
-            return .blue
-        case "in progress", "diagnostic in progress", "diagnostic completed", "2- just approved! start work.", "d4b - in progress", "alamy - in progress":
-            return .orange
+            return Color(red: 0.0, green: 0.47, blue: 1.0)  // Brighter blue
+            
+        // In Progress States - Orange
+        case "in progress", "diagnostic in progress", "diagnostic completed",
+             "2- just approved! start work.", "d4b - in progress", "alamy - in progress":
+            return Color(red: 1.0, green: 0.6, blue: 0.0)  // Warmer orange
+            
+        // Waiting States - Purple/Pink
         case "waiting for parts", "part arrived! awaiting customer":
-            return .purple
+            return Color(red: 0.69, green: 0.32, blue: 0.87)  // Rich purple
+            
+        // Customer Action Required - Yellow
         case "waiting on customer":
-            return .yellow
-        case "repair complete":
-            return .green
-        case "resolved", "done->customer action needed", "scheduled", "cognism - stored device", "ready for pick-up":
-            return .gray
-        // Add more cases if specific colors are needed for other statuses
+            return Color(red: 0.95, green: 0.77, blue: 0.06)  // Warm yellow
+            
+        // Completed States - Green
+        case "repair complete", "ready for pick-up":
+            return Color(red: 0.2, green: 0.8, blue: 0.4)  // Bright green
+            
+        // Resolved/Closed States - Gray
+        case "resolved", "done->customer action needed", "scheduled", "cognism - stored device":
+            return Color(red: 0.5, green: 0.55, blue: 0.6)  // Cool gray
+            
         default:
-            return .gray  // Default for any status not explicitly handled
+            return Color(red: 0.6, green: 0.6, blue: 0.6)
         }
     }
     
     var body: some View {
         Text(status)
-            .font(.caption)
-            .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(statusColor.opacity(0.2))
+            .font(.system(size: 12, weight: .medium))  // Slightly larger font
+            .padding(.horizontal, 12)  // More horizontal padding
+            .padding(.vertical, 6)     // More vertical padding
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(statusColor.opacity(0.15))  // Lighter background
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(statusColor.opacity(0.3), lineWidth: 1)  // Subtle border
+                    )
+            )
             .foregroundColor(statusColor)
-            .cornerRadius(8)
     }
 }
 #Preview {

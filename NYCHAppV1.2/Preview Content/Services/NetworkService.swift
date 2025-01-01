@@ -175,3 +175,200 @@ class NetworkService {
 
     
 }
+
+
+// MARK: Phone and Email Request for existing customers.
+
+
+extension NetworkService {
+    func searchCustomerByEmail(_ email: String) async throws -> CustomerSearchResponse {
+        guard let encodedEmail = email.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(APIConfig.baseURL)/customers?email=\(encodedEmail)") else {
+            print("Debug: Failed to create URL for email search")
+            throw NetworkError.invalidURL
+        }
+        
+        print("Debug: Attempting email search with URL: \(url.absoluteString)")
+        
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(APIConfig.apiKey, forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("Debug: Invalid response type")
+            throw NetworkError.invalidResponse
+        }
+        
+        print("Debug: Response status code: \(httpResponse.statusCode)")
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            print("Debug: Error response: \(String(data: data, encoding: .utf8) ?? "No error message")")
+            throw NetworkError.invalidResponse
+        }
+        
+        // Print the raw response data
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("Debug: Raw JSON response: \(jsonString)")
+        }
+        
+        do {
+            let response = try JSONDecoder().decode(CustomerSearchResponse.self, from: data)
+            print("Debug: Successfully decoded response with \(response.customers.count) customers")
+            return response
+        } catch {
+            print("Debug: JSON Decoding error: \(error)")
+            throw error
+        }
+    }
+
+    
+    func searchCustomerByPhone(_ phone: String) async throws -> PhoneSearchResponse {
+        guard let encodedPhone = phone.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(APIConfig.baseURL)/search?query=\(encodedPhone)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(APIConfig.apiKey, forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        
+        return try JSONDecoder().decode(PhoneSearchResponse.self, from: data)
+    }
+}
+
+
+struct CustomerSearchResponse: Codable {
+    let customers: [CustomerDetail]
+}
+
+struct CustomerDetail: Codable {
+    let id: Int
+    let firstname: String
+    let lastname: String
+    let fullname: String
+}
+
+struct PhoneSearchResponse: Codable {
+    let results: [PhoneSearchResult]
+}
+
+struct PhoneSearchResult: Codable {
+    let table: PhoneSearchTable
+}
+
+struct PhoneSearchTable: Codable {
+    let _id: Int
+    let _source: PhoneSearchSource
+}
+
+struct PhoneSearchSource: Codable {
+    let table: PhoneSearchTableDetails
+}
+
+struct PhoneSearchTableDetails: Codable {
+    let firstname: String
+    let lastname: String
+}
+
+
+struct CustomerSearchMeta: Codable {
+    let total_pages: Int
+    let total_entries: Int
+    let per_page: Int
+    let page: Int
+}
+
+
+ 
+
+// MARK: To check ticket using phone number.
+
+extension NetworkService {
+    func getTicketsByCustomerId(_ customerId: Int) async throws -> Data {
+        guard let url = URL(string: "\(APIConfig.baseURL)/tickets?customer_id=\(customerId)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(APIConfig.apiKey, forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        
+        return data
+    }
+}
+
+struct CustomerPhoneSearchResponse: Codable {
+    let quick_result: String?
+    let results: [CustomerPhoneResult]
+    let error: String?
+}
+
+struct CustomerPhoneResult: Codable {
+    let table: CustomerPhoneTableInfo
+}
+
+struct CustomerPhoneTableInfo: Codable {
+    let _id: Int
+    let _type: String
+    let _index: String
+    let _source: CustomerPhoneSourceInfo
+}
+
+struct CustomerPhoneSourceInfo: Codable {
+    let table: CustomerPhoneInfo
+}
+
+struct CustomerPhoneInfo: Codable {
+    let firstname: String
+    let lastname: String
+    let email: String
+    let business_name: String
+    let phones: [CustomerPhone]
+}
+
+struct CustomerPhone: Codable {
+    let id: Int
+    let label: String
+    let number: String
+    let customer_id: Int
+}
+
+
+extension NetworkService {
+    func searchCustomerInfoByPhone(_ phone: String) async throws -> CustomerPhoneSearchResponse {
+        guard let url = URL(string: "\(APIConfig.baseURL)/search?query=\(phone)") else {
+            throw NetworkError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(APIConfig.apiKey, forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NetworkError.invalidResponse
+        }
+        
+        return try JSONDecoder().decode(CustomerPhoneSearchResponse.self, from: data)
+    }
+}
+
+

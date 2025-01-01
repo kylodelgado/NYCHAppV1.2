@@ -46,19 +46,25 @@ struct TicketDetails: Codable {
     let dueDate: Date?
     let resolvedAt: Date?
     let customerId: Int
+    let customer_business_then_name: String
     let properties: [String: String]
     let comments: [TicketComment]
-    let customer: Customer  // Add customer object
+    let problem_type: String?
+    let billing_status: String?
+    let user: UserInfo?
+    let customer: Customer?  // Make this optional
     
     enum CodingKeys: String, CodingKey {
-        case id, number, subject, status
+        case id, number, subject, status, properties, comments, customer
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case dueDate = "due_date"
         case resolvedAt = "resolved_at"
         case customerId = "customer_id"
-        case properties, comments
-        case customer
+        case customer_business_then_name
+        case problem_type
+        case billing_status
+        case user
     }
     
     init(from decoder: Decoder) throws {
@@ -79,19 +85,22 @@ struct TicketDetails: Codable {
         customerId = try container.decode(Int.self, forKey: .customerId)
         properties = try container.decode([String: String].self, forKey: .properties)
         comments = try container.decode([TicketComment].self, forKey: .comments)
-        customer = try container.decode(Customer.self, forKey: .customer)
+        customer = try? container.decodeIfPresent(Customer.self, forKey: .customer)
+        customer_business_then_name = try container.decode(String.self, forKey: .customer_business_then_name)
+        problem_type = try container.decodeIfPresent(String.self, forKey: .problem_type)
+        billing_status = try container.decodeIfPresent(String.self, forKey: .billing_status)
+        user = try? container.decodeIfPresent(UserInfo.self, forKey: .user)
     }
     
     // Computed properties for convenience
     var customerName: String {
-        return customer.fullname
+        return customer?.fullname ?? customer_business_then_name
     }
     
     var customerBusinessName: String? {
-        return customer.businessName
+        return customer?.businessName
     }
 }
-
 // Add Customer struct
 struct Customer: Codable {
     let id: Int
