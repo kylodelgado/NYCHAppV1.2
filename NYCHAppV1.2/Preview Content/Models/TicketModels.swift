@@ -36,7 +36,7 @@ struct TicketResponse: Codable {
     let ticket: TicketDetails
 }
 
-struct TicketDetails: Codable {
+struct TicketDetails: Codable, Equatable {
     let id: Int
     let number: String
     let subject: String
@@ -52,7 +52,7 @@ struct TicketDetails: Codable {
     let problem_type: String?
     let billing_status: String?
     let user: UserInfo?
-    let customer: Customer?  // Make this optional
+    let customer: Customer?
     
     enum CodingKeys: String, CodingKey {
         case id, number, subject, status, properties, comments, customer
@@ -100,9 +100,20 @@ struct TicketDetails: Codable {
     var customerBusinessName: String? {
         return customer?.businessName
     }
+    
+    // Add Equatable conformance
+    static func == (lhs: TicketDetails, rhs: TicketDetails) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.number == rhs.number &&
+               lhs.subject == rhs.subject &&
+               lhs.status == rhs.status &&
+               lhs.createdAt == rhs.createdAt &&
+               lhs.updatedAt == rhs.updatedAt &&
+               lhs.customerId == rhs.customerId
+    }
 }
 // Add Customer struct
-struct Customer: Codable {
+struct Customer: Codable, Equatable {
     let id: Int
     let firstname: String
     let lastname: String
@@ -113,8 +124,12 @@ struct Customer: Codable {
         case id, firstname, lastname, fullname
         case businessName = "business_name"
     }
+    
+    static func == (lhs: Customer, rhs: Customer) -> Bool {
+        return lhs.id == rhs.id
+    }
 }
-struct TicketComment: Codable {
+struct TicketComment: Codable, Equatable {
     let id: Int
     let subject: String?
     let body: String?
@@ -122,12 +137,16 @@ struct TicketComment: Codable {
     let hidden: Bool
     let createdAt: Date
     
-
     enum CodingKeys: String, CodingKey {
         case id, subject, body, tech, hidden
         case createdAt = "created_at"
     }
+    
+    static func == (lhs: TicketComment, rhs: TicketComment) -> Bool {
+        return lhs.id == rhs.id
+    }
 }
+
 
 struct Ticket: Identifiable, Codable {
     let id: Int
@@ -136,3 +155,5 @@ struct Ticket: Identifiable, Codable {
 struct TicketItems: Codable {
     let tickets: [Ticket]
 }
+
+

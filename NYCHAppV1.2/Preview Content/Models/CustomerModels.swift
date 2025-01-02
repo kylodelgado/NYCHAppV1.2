@@ -75,3 +75,4 @@ struct CustomerDetails: Codable {
         case email
     }
 }
+

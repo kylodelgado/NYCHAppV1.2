@@ -17,9 +17,8 @@ enum Route: Hashable {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var customerInfo: [CustomerInformation]
     @State private var navigationPath = NavigationPath()
-    @State private var showContactSheet = false  // For contact options
+    @State private var showContactSheet = false
     @State private var showCustomerSelection = false
     
     var body: some View {
@@ -27,28 +26,43 @@ struct ContentView: View {
             ZStack {
                 GradientBackground()
                 
-                VStack(spacing: 25) {
-                    // Company Logo
-                    Image("nychlogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 60)
-                        .padding(.top, 20)
-                    
-                    // Quick Actions Section
-                    VStack(spacing: 16) {
-                        Text(!showCustomerSelection ? "Quick Actions" : "New Repair")
-                            .font(.headline)
-                            .foregroundColor(.gray)
+                ScrollView {
+                    VStack(spacing: 25) {
+                        // Company Logo
+                        Image("nychlogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 60)
+                            .padding(.top, 20)
+                            .shadow(color: .black.opacity(0.1), radius: 4)
                         
-                        // Primary Actions Grid
-                        VStack {
-                            LazyVGrid(columns: [
-                                GridItem(.flexible()),
-                                GridItem(.flexible())
-                            ], spacing: 16) {
+                        // Quick Actions Section
+                        VStack(spacing: 20) {
+                            HStack {
                                 if showCustomerSelection {
-                                    // New Customer Button
+                                    Button(action: {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showCustomerSelection = false
+                                        }
+                                    }) {
+                                        Image(systemName: "chevron.left")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                
+                                Text(!showCustomerSelection ? "Quick Actions" : "New Repair")
+                                    .font(.title2.weight(.bold))
+                                    .foregroundColor(.primary)
+                                
+                                if showCustomerSelection {
+                                    Spacer()
+                                }
+                            }
+                            
+                            if showCustomerSelection {
+                                // Customer selection buttons with transition
+                                VStack(spacing: 16) {
                                     ActionCard(
                                         title: "New Customer",
                                         iconName: "person.badge.plus",
@@ -61,7 +75,6 @@ struct ContentView: View {
                                         }
                                     }
                                     
-                                    // Existing Customer Button
                                     ActionCard(
                                         title: "Existing Customer",
                                         iconName: "person.fill.checkmark",
@@ -73,12 +86,24 @@ struct ContentView: View {
                                             showCustomerSelection = false
                                         }
                                     }
-                                } else {
-                                    // Default Quick Actions
+                                }
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                                    removal: .move(edge: .leading).combined(with: .opacity)
+                                ))
+                            } else {
+                                // Main action buttons with grid layout
+                                LazyVGrid(
+                                    columns: [
+                                        GridItem(.flexible(), spacing: 16),
+                                        GridItem(.flexible(), spacing: 16)
+                                    ],
+                                    spacing: 16
+                                ) {
                                     ActionCard(
-                                        title: "Check Status",
-                                        iconName: "magnifyingglass.circle.fill",
-                                        description: "Track repair progress",
+                                        title: "Your Tickets",
+                                        iconName: "ticket.fill",
+                                        description: "View & track repairs",
                                         color: .blue
                                     ) {
                                         navigationPath.append(Route.statusCheck)
@@ -90,18 +115,9 @@ struct ContentView: View {
                                         description: "Start repair request",
                                         color: .green
                                     ) {
-                                        withAnimation {
-                                            showCustomerSelection = true  // Show customer selection with animation
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showCustomerSelection = true
                                         }
-                                    }
-                                    
-                                    ActionCard(
-                                        title: "Your Tickets",
-                                        iconName: "ticket.fill",
-                                        description: "View active tickets",
-                                        color: .red
-                                    ) {
-                                        navigationPath.append(Route.contact)
                                     }
                                     
                                     ActionCard(
@@ -113,74 +129,43 @@ struct ContentView: View {
                                         showContactSheet = true
                                     }
                                 }
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .leading).combined(with: .opacity),
+                                    removal: .move(edge: .trailing).combined(with: .opacity)
+                                ))
                             }
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
-                            ))
-                            .padding(.top, showCustomerSelection ? 40 : 0)
                         }
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 15)
-                            .fill(Color.white)
-                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                    )
-                    .padding(.horizontal)
-                    VStack(alignment: .leading, spacing: 16) {
-                                            Text("Recent Activity")
-                                                .font(.headline)
-                                                .foregroundColor(.gray)
-                                            
-                                            if customerInfo.isEmpty {
-                                                EmptyStateView()
-                                            } else {
-                                                RecentActivityList(activities: customerInfo)
-                                            }
-                                        }
-                                        .padding()
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 15)
-                                                .fill(Color.white)
-                                                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                                        )
-                                        .padding(.horizontal)
-                                        
-                                        Spacer()
-                                    
-                }
-                
-            }
-            .onTapGesture {
-                if showCustomerSelection {
-                    withAnimation(.smooth) {
-                        showCustomerSelection = false
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(Color(UIColor.systemBackground).opacity(0.95))
+                                .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
+                        )
+                        .padding(.horizontal)
                     }
                 }
             }
-            
-            .navigationTitle("Welcome")
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .statusCheck:
-                    StatusCheckView()
+                    TicketTrackerView()
                 case .newRepair:
                     SubmitCustomerInfoView()
-                case .quickQuote:
-                    QuickQuoteView() // need to create this
-                case .contact:
-                    ContactView() // need to create this
                 case .existingCustomer:
                     ExistingCustomerView()
+                case .quickQuote:
+                    QuickQuoteView()
+                case .contact:
+                    ContactView()
                 }
             }
-            .sheet(isPresented: $showContactSheet) {
-                ContactOptionsSheet() // create this
-            }.preferredColorScheme(.light)
         }
+        .sheet(isPresented: $showContactSheet) {
+            ContactOptionsSheet()
+        }.preferredColorScheme(.light)
     }
 }
+
 
 struct ActionCard: View {
     let title: String
@@ -188,37 +173,59 @@ struct ActionCard: View {
     let description: String
     let color: Color
     var action: (() -> Void)? = nil
+    @State private var isPressed = false
     
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: iconName)
-                .font(.system(size: 30))
-                .foregroundColor(color)
-            
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.primary)
-            
-            Text(description)
-                .font(.caption)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.white)
-                .shadow(color: color.opacity(0.2), radius: 5, x: 0, y: 2)
-        )
-        .onTapGesture {
-            if let action = action {
-                action()
+        Button(action: {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                isPressed = true
             }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isPressed = false
+                action?()
+            }
+        }) {
+            VStack(spacing: 16) {
+                // Icon with background
+                Circle()
+                    .fill(color.opacity(0.1))
+                    .frame(width: 56, height: 56)
+                    .overlay(
+                        Image(systemName: iconName)
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundColor(color)
+                    )
+                
+                VStack(spacing: 8) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(description)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.vertical, 20)
+            .padding(.horizontal, 12)
+            .background(Color(UIColor.systemBackground))
+            .cornerRadius(16)
+            .shadow(
+                color: color.opacity(0.1),
+                radius: isPressed ? 4 : 8,
+                x: 0,
+                y: isPressed ? 2 : 4
+            )
+            .scaleEffect(isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
+        .buttonStyle(PlainButtonStyle())
     }
 }
-
 // Contact Options Sheet
 struct ContactOptionsSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -323,5 +330,6 @@ struct EmptyStateView: View {
 }
 #Preview {
     ContentView()
+        .modelContainer(for: CustomerInformation.self, inMemory: true)
 }
 

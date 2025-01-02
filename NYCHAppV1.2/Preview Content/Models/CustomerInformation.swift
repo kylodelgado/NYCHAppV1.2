@@ -6,18 +6,19 @@
 //
 
 import SwiftData
-import SwiftUI
 import Foundation
 
 @Model
-class CustomerInformation {
+final class CustomerInformation {
+    var phoneNumber: String
     var customerID: Int
+    var customerName: String
     var timestamp: Date
-    var id: UUID
     
-    init(customerID: Int) {
+    init(phoneNumber: String, customerID: Int, customerName: String) {
+        self.phoneNumber = phoneNumber
         self.customerID = customerID
+        self.customerName = customerName
         self.timestamp = Date()
-        self.id = UUID()
     }
 }

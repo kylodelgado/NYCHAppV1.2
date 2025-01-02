@@ -15,6 +15,12 @@ class StatusCheckViewModel: BaseViewModel {
     @Published var ticket: TicketDetails?
     @Published var customerTickets: [TicketDetails] = []
     
+    func clearSearch() {
+        searchText = ""
+        ticket = nil
+        customerTickets = []
+    }
+    
     func searchTicket() async {
         guard !searchText.isEmpty else {
             showError("Please enter a ticket number or phone number")
@@ -34,7 +40,6 @@ class StatusCheckViewModel: BaseViewModel {
                 let ticketResponse = try decoder.decode(TicketResponse.self, from: data)
                 self.ticket = ticketResponse.ticket
                 self.customerTickets = []
-                print(customerTickets[0].customerId)
                 
             } else {
                 print("Performing phone number search")
@@ -97,7 +102,7 @@ struct Meta: Codable {
     let page: Int
 }
 
-struct UserInfo: Codable {
+struct UserInfo: Codable, Equatable {
     let id: Int
     let email: String
     let full_name: String
@@ -106,5 +111,9 @@ struct UserInfo: Codable {
     
     enum CodingKeys: String, CodingKey {
         case id, email, full_name, group, color
+    }
+    
+    static func == (lhs: UserInfo, rhs: UserInfo) -> Bool {
+        return lhs.id == rhs.id
     }
 }

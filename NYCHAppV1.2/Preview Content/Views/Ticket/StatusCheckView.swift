@@ -74,31 +74,21 @@ struct SearchCard: View {
                 .font(.headline)
                 .foregroundColor(.gray)
             
-            HStack {
-                TextField("Search", text: $viewModel.searchText)
-                    .textFieldStyle(CustomSearchFieldStyle())
-                    .focused($isTextFieldFocused)
-                    .keyboardType(.numberPad)
-                    .onSubmit {
-                        isTextFieldFocused = false
-                    }
-                
-                Button {
+            SearchField(
+                text: $viewModel.searchText,
+                placeholder: "Enter ticket # or phone",
+                icon: "magnifyingglass.circle.fill",
+                keyboardType: .numberPad,
+                isValid: !viewModel.searchText.isEmpty,
+                isFocused: $isTextFieldFocused,
+                onSubmit: {
                     Task {
                         await viewModel.searchTicket()
                     }
                     isTextFieldFocused = false
-                } label: {
-                    Image(systemName: "magnifyingglass.circle.fill")
-                        .font(.system(size: 44))
-                        .foregroundColor(.blue)
                 }
-                .disabled(viewModel.searchText.isEmpty || viewModel.isLoading)
-            }
-            .padding(.horizontal)
-            .onTapGesture {
-                isTextFieldFocused = false
-            }
+            )
+            .disabled(viewModel.isLoading)  // Disable while loading
         }
         .padding()
         .background(
@@ -109,7 +99,6 @@ struct SearchCard: View {
         .padding(.horizontal)
     }
 }
-
 struct CustomerTicketRow: View {
     let ticket: TicketDetails
     
@@ -320,52 +309,39 @@ struct CommentView: View {
 struct StatusBadge: View {
     let status: String
     
-    var statusColor: Color {
+    var statusInfo: (color: Color, icon: String) {
         switch status.lowercased() {
-        // New/Initial States - Blue
         case "new", "marcus", "mike":
-            return Color(red: 0.0, green: 0.47, blue: 1.0)  // Brighter blue
-            
-        // In Progress States - Orange
+            return (.blue, "circle.fill")
         case "in progress", "diagnostic in progress", "diagnostic completed",
              "2- just approved! start work.", "d4b - in progress", "alamy - in progress":
-            return Color(red: 1.0, green: 0.6, blue: 0.0)  // Warmer orange
-            
-        // Waiting States - Purple/Pink
+            return (.orange, "arrow.triangle.2.circlepath")
         case "waiting for parts", "part arrived! awaiting customer":
-            return Color(red: 0.69, green: 0.32, blue: 0.87)  // Rich purple
-            
-        // Customer Action Required - Yellow
+            return (.purple, "clock.fill")
         case "waiting on customer":
-            return Color(red: 0.95, green: 0.77, blue: 0.06)  // Warm yellow
-            
-        // Completed States - Green
+            return (.yellow, "person.fill.questionmark")
         case "repair complete", "ready for pick-up":
-            return Color(red: 0.2, green: 0.8, blue: 0.4)  // Bright green
-            
-        // Resolved/Closed States - Gray
+            return (.green, "checkmark.circle.fill")
         case "resolved", "done->customer action needed", "scheduled", "cognism - stored device":
-            return Color(red: 0.5, green: 0.55, blue: 0.6)  // Cool gray
-            
+            return (.gray, "archivebox.fill")
         default:
-            return Color(red: 0.6, green: 0.6, blue: 0.6)
+            return (.gray, "circle.fill")
         }
     }
     
     var body: some View {
-        Text(status)
-            .font(.system(size: 12, weight: .medium))  // Slightly larger font
-            .padding(.horizontal, 12)  // More horizontal padding
-            .padding(.vertical, 6)     // More vertical padding
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(statusColor.opacity(0.15))  // Lighter background
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(statusColor.opacity(0.3), lineWidth: 1)  // Subtle border
-                    )
-            )
-            .foregroundColor(statusColor)
+        HStack(spacing: 4) {
+            Image(systemName: statusInfo.icon)
+                .font(.system(size: 12))
+            Text(status)
+                .lineLimit(1)
+        }
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(statusInfo.color)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(statusInfo.color.opacity(0.15))
+        .cornerRadius(8)
     }
 }
 #Preview {

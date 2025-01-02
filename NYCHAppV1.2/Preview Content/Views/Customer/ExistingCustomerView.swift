@@ -8,107 +8,71 @@ struct ExistingCustomerView: View {
         ZStack {
             GradientBackground()
             
-            VStack(spacing: 20) {
+            VStack(spacing: 24) {
                 // Search Type Toggle
-                Picker("Search Type", selection: $viewModel.searchType) {
-                    Text("Phone").tag("Phone")
-                    Text("Email").tag("Email")
+                HStack(spacing: 24) {
+                    SearchTypeButton(
+                        isSelected: viewModel.searchType == "Phone",
+                        icon: "phone.fill",
+                        title: "Phone"
+                    ) {
+                        withAnimation(.spring(response: 0.3)) {
+                            viewModel.searchType = "Phone"
+                            viewModel.searchText = ""
+                        }
+                    }
+                    
+                    SearchTypeButton(
+                        isSelected: viewModel.searchType == "Email",
+                        icon: "envelope.fill",
+                        title: "Email"
+                    ) {
+                        withAnimation(.spring(response: 0.3)) {
+                            viewModel.searchType = "Email"
+                            viewModel.searchText = ""
+                        }
+                    }
                 }
-                .pickerStyle(.segmented)
                 .padding(.horizontal)
                 
                 // Search Card
                 VStack(spacing: 16) {
                     Text("Enter Your \(viewModel.searchType)")
-                        .font(.headline)
-                        .foregroundColor(.gray)
+                        .font(AppTheme.headlineFont)
+                        .foregroundColor(AppTheme.secondaryColor)
                     
-                    HStack {
-                        // Leading Icon
-                        Image(systemName: viewModel.searchType == "Phone" ? "phone.fill" : "envelope.fill")
-                            .foregroundColor(.gray)
-                            .frame(width: 24)
-                        
-                        TextField(viewModel.searchType == "Phone" ? "Enter phone number" : "Enter email address",
-                                text: $viewModel.searchText)
-                            .textFieldStyle(CustomSearchFieldStyle())
-                            .keyboardType(viewModel.searchType == "Phone" ? .phonePad : .emailAddress)
-                            .textContentType(viewModel.searchType == "Phone" ? .telephoneNumber : .emailAddress)
-                            .autocapitalization(.none)
-                            .focused($isTextFieldFocused)
-                            .onChange(of: viewModel.searchText) { _, newValue in
-                                if viewModel.searchType == "Phone" {
-                                    viewModel.searchText = newValue.filter { $0.isNumber }
-                                }
-                            }
-                        
-                        // Clear button
-                        if !viewModel.searchText.isEmpty {
-                            Button {
-                                viewModel.searchText = ""
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        
-                        Button {
+                    SearchField(
+                        text: $viewModel.searchText,
+                        placeholder: viewModel.searchType == "Phone" ? "Enter phone number" : "Enter email address",
+                        icon: viewModel.searchType == "Phone" ? "phone.fill" : "envelope.fill",
+                        keyboardType: viewModel.searchType == "Phone" ? .phonePad : .emailAddress,
+                        isValid: viewModel.isInputValid,
+                        isFocused: $isTextFieldFocused,
+                        onSubmit: {
                             if viewModel.validateInput() {
                                 Task {
                                     await viewModel.searchCustomer()
                                 }
                             }
-                        } label: {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .font(.system(size: 44))
-                                .foregroundColor(viewModel.isInputValid ? .blue : .gray)
                         }
-                        .disabled(!viewModel.isInputValid || viewModel.isLoading)
-                    }
-                    .padding(.horizontal)
+                    )
                     
-                    // Validation message
                     if let validationMessage = viewModel.validationMessage {
                         Text(validationMessage)
                             .font(.caption)
                             .foregroundColor(.red)
-                            .padding(.horizontal)
+                            .transition(.opacity)
                     }
                 }
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 15)
-                        .fill(Color.white)
-                        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                        .fill(AppTheme.backgroundColor)
+                        .shadow(color: AppTheme.cardShadow, radius: 5, x: 0, y: 2)
                 )
                 .padding(.horizontal)
-                
-                // Instructions or empty state
-                if !viewModel.isLoading && viewModel.foundCustomerId == nil {
-                    VStack(spacing: 12) {
-                        Image(systemName: viewModel.searchType == "Phone" ? "phone.circle.fill" : "envelope.circle.fill")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text("Enter your \(viewModel.searchType.lowercased()) to find your information")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding()
-                }
-                
-                Spacer()
             }
             .padding(.top)
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") {
-                        isTextFieldFocused = false
-                    }
-                }
-            }
             
             if viewModel.isLoading {
                 LoadingView()
@@ -138,6 +102,105 @@ struct ExistingCustomerView: View {
         }
     }
 }
+
+struct SearchTypeButton: View {
+    let isSelected: Bool
+    let icon: String
+    let title: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                Text(title)
+                    .font(AppTheme.bodyFont)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? AppTheme.primaryColor : AppTheme.backgroundColor)
+                    .shadow(
+                        color: isSelected ? AppTheme.primaryColor.opacity(0.3) : AppTheme.cardShadow,
+                        radius: 5,
+                        x: 0,
+                        y: 2
+                    )
+            )
+            .foregroundColor(isSelected ? .white : AppTheme.secondaryColor)
+        }
+    }
+}
+
+struct SearchField: View {
+    @Binding var text: String
+    let placeholder: String
+    let icon: String
+    let keyboardType: UIKeyboardType
+    let isValid: Bool
+    var isFocused: FocusState<Bool>.Binding
+    let onSubmit: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(isFocused.wrappedValue ? AppTheme.primaryColor :
+                    (isValid ? AppTheme.secondaryColor : .red))
+                .font(.system(size: isFocused.wrappedValue ? 24 : 20))  // Dynamic scaling
+            
+            TextField(placeholder, text: $text)
+                .keyboardType(keyboardType)
+                .focused(isFocused)
+                .submitLabel(.search)
+                .onSubmit {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()  // Haptic Feedback
+                    onSubmit()
+                }
+            
+            if !text.isEmpty {
+                Button {
+                    withAnimation {
+                        text = ""
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()  // Haptic Feedback
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(AppTheme.secondaryColor)
+                        .transition(.opacity)
+                }
+            }
+            
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()  // Haptic Feedback
+                onSubmit()
+            }) {
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: isValid ? 48 : 44))  // Smooth transition
+                    .foregroundColor(isValid ? AppTheme.primaryColor : AppTheme.secondaryColor)
+                    .scaleEffect(isValid ? 1.1 : 1.0)  // Slight scale when active
+            }
+            .disabled(!isValid)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isValid)  // Smooth animation
+        }
+        .padding()
+        .background(AppTheme.backgroundColor)
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    isFocused.wrappedValue ? AppTheme.primaryColor :
+                        (isValid ? AppTheme.secondaryColor.opacity(0.2) : .red),
+                    lineWidth: isFocused.wrappedValue ? 1.5 : 1
+                )
+                .shadow(color: isFocused.wrappedValue ? AppTheme.primaryColor.opacity(0.3) : .clear,
+                        radius: isFocused.wrappedValue ? 5 : 0)
+        )
+        .animation(.easeInOut(duration: 0.2), value: isFocused.wrappedValue)
+    }
+}
+
 #Preview {
     NavigationStack {
         ExistingCustomerView()

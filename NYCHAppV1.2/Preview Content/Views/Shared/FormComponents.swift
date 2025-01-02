@@ -36,6 +36,7 @@ struct FormField: View {
     let isRequired: Bool
     let isValid: Bool
     let keyboardType: UIKeyboardType
+    @FocusState private var isFocused: Bool
     
     init(
         title: String,
@@ -58,7 +59,7 @@ struct FormField: View {
             HStack(spacing: 4) {
                 Text(title)
                     .font(AppTheme.bodyFont)
-                    .foregroundColor(AppTheme.secondaryColor)
+                    .foregroundColor(isFocused ? AppTheme.primaryColor : AppTheme.secondaryColor)
                 if isRequired {
                     Text("*")
                         .foregroundColor(.red)
@@ -66,36 +67,58 @@ struct FormField: View {
                 }
             }
             
-            TextField(placeholder, text: $text)
-                .textFieldStyle(CustomTextFieldStyle(isValid: isValid))
-                .keyboardType(keyboardType)
-                .font(AppTheme.bodyFont)
+            HStack {
+                TextField(placeholder, text: $text)
+                    .textFieldStyle(CustomTextFieldStyle(isValid: isValid, isFocused: isFocused))
+                    .keyboardType(keyboardType)
+                    .font(AppTheme.bodyFont)
+                    .focused($isFocused)
+                
+                if !text.isEmpty {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            text = ""
+                        }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray.opacity(0.5))
+                    }
+                    .padding(.trailing, 8)
+                }
+            }
         }
         .padding(.horizontal)
+        .animation(.easeInOut(duration: 0.2), value: isFocused)
     }
 }
 
-// Update CustomTextFieldStyle with improved styling
 struct CustomTextFieldStyle: TextFieldStyle {
     let isValid: Bool
+    let isFocused: Bool
     
     func _body(configuration: TextField<Self._Label>) -> some View {
         configuration
             .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(AppTheme.backgroundColor)
-            )
+            .background(AppTheme.backgroundColor)
+            .cornerRadius(10)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isValid ? AppTheme.secondaryColor.opacity(0.3) : .red, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(
+                        isFocused ? AppTheme.primaryColor :
+                        (isValid ? AppTheme.secondaryColor.opacity(0.3) : Color.red),
+                        lineWidth: isFocused ? 1.5 : 1
+                    )
             )
             .shadow(
-                color: isValid ? AppTheme.cardShadow : Color.red.opacity(0.3),
-                radius: 3, x: 0, y: 2
+                color: isFocused ? AppTheme.primaryColor.opacity(0.1) : AppTheme.cardShadow,
+                radius: 3,
+                x: 0,
+                y: 2
             )
     }
 }
+
+
 
 // Update existing Pickers with improved styling
 struct Pickers: View {

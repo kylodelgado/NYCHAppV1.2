@@ -10,12 +10,21 @@ import SwiftData
 
 @main
 struct NYCHAppV1_2App: App {
+    let container: ModelContainer
+
+    init() {
+        do {
+            container = try ModelContainer(for: CustomerInformation.self)
+            print("SwiftData container initialized successfully")
+        } catch {
+            fatalError("Could not configure SwiftData container: \(error)")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                ContentView()
-            }
+            ContentView()
         }
-        .modelContainer(for: CustomerInformation.self)
+        .modelContainer(container)
     }
 }
