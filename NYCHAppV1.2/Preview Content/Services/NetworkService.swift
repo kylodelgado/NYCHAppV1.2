@@ -246,49 +246,7 @@ extension NetworkService {
 }
 
 
-struct CustomerSearchResponse: Codable {
-    let customers: [CustomerDetail]
-}
 
-struct CustomerDetail: Codable {
-    let id: Int
-    let firstname: String
-    let lastname: String
-    let fullname: String
-}
-
-struct PhoneSearchResponse: Codable {
-    let results: [PhoneSearchResult]
-}
-
-struct PhoneSearchResult: Codable {
-    let table: PhoneSearchTable
-}
-
-struct PhoneSearchTable: Codable {
-    let _id: Int
-    let _source: PhoneSearchSource
-}
-
-struct PhoneSearchSource: Codable {
-    let table: PhoneSearchTableDetails
-}
-
-struct PhoneSearchTableDetails: Codable {
-    let firstname: String
-    let lastname: String
-}
-
-
-struct CustomerSearchMeta: Codable {
-    let total_pages: Int
-    let total_entries: Int
-    let per_page: Int
-    let page: Int
-}
-
-
- 
 
 // MARK: To check ticket using phone number.
 
@@ -313,41 +271,6 @@ extension NetworkService {
     }
 }
 
-struct CustomerPhoneSearchResponse: Codable {
-    let quick_result: String?
-    let results: [CustomerPhoneResult]
-    let error: String?
-}
-
-struct CustomerPhoneResult: Codable {
-    let table: CustomerPhoneTableInfo
-}
-
-struct CustomerPhoneTableInfo: Codable {
-    let _id: Int
-    let _type: String
-    let _index: String
-    let _source: CustomerPhoneSourceInfo
-}
-
-struct CustomerPhoneSourceInfo: Codable {
-    let table: CustomerPhoneInfo
-}
-
-struct CustomerPhoneInfo: Codable {
-    let firstname: String
-    let lastname: String
-    let email: String
-    let business_name: String
-    let phones: [CustomerPhone]
-}
-
-struct CustomerPhone: Codable {
-    let id: Int
-    let label: String
-    let number: String
-    let customer_id: Int
-}
 
 
 extension NetworkService {

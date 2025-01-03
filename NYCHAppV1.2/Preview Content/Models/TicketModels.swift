@@ -112,23 +112,7 @@ struct TicketDetails: Codable, Equatable {
                lhs.customerId == rhs.customerId
     }
 }
-// Add Customer struct
-struct Customer: Codable, Equatable {
-    let id: Int
-    let firstname: String
-    let lastname: String
-    let fullname: String
-    let businessName: String?
-    
-    enum CodingKeys: String, CodingKey {
-        case id, firstname, lastname, fullname
-        case businessName = "business_name"
-    }
-    
-    static func == (lhs: Customer, rhs: Customer) -> Bool {
-        return lhs.id == rhs.id
-    }
-}
+
 struct TicketComment: Codable, Equatable {
     let id: Int
     let subject: String?
