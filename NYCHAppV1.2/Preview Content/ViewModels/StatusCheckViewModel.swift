@@ -9,16 +9,24 @@ import SwiftUI
 import SwiftData
 
 @MainActor
-
 class StatusCheckViewModel: BaseViewModel {
     @Published var searchText = ""
     @Published var ticket: TicketDetails?
     @Published var customerTickets: [TicketDetails] = []
+    @Published var foundCustomerInfo: CustomerSearchInfo?
+    
+    struct CustomerSearchInfo: Equatable {
+        let id: Int
+        let name: String
+        let phone: String
+    }
     
     func clearSearch() {
+        print("Clearing search state")
         searchText = ""
         ticket = nil
         customerTickets = []
+        foundCustomerInfo = nil
     }
     
     func searchTicket() async {
@@ -27,10 +35,19 @@ class StatusCheckViewModel: BaseViewModel {
             return
         }
         
+        func searchTicket() async {
+            guard !searchText.isEmpty else { return }
+            
+            startLoading()
+            customerTickets = [] // Clear current tickets
+            ticket = nil // Clear current ticket
+        }
+        
         startLoading()
         
         do {
             if searchText.count == 5 && searchText.allSatisfy({ $0.isNumber }) {
+                print("Performing ticket search for: \(searchText)")
                 let data = try await NetworkService.shared.getTicketStatus(searchText)
                 let decoder = JSONDecoder()
                 let dateFormatter = DateFormatter()
@@ -39,8 +56,43 @@ class StatusCheckViewModel: BaseViewModel {
                 
                 let ticketResponse = try decoder.decode(TicketResponse.self, from: data)
                 self.ticket = ticketResponse.ticket
-                self.customerTickets = []
                 
+                if let ticket = self.ticket {
+                    print("Successfully found ticket: #\(ticket.number)")
+                    
+                    // Fetch all tickets for this customer
+                    let customerTicketsData = try await NetworkService.shared.getTicketsByCustomerId(ticket.customerId)
+                    let ticketsResponse = try decoder.decode(TicketsResponse.self, from: customerTicketsData)
+                    
+                    print("Found \(ticketsResponse.tickets.count) tickets for customer")
+                    
+                    // Sort tickets - searched ticket first, then by date
+                    self.customerTickets = ticketsResponse.tickets.sorted { ticket1, ticket2 in
+                        if ticket1.number == searchText {
+                            return true
+                        } else if ticket2.number == searchText {
+                            return false
+                        }
+                        return ticket1.createdAt > ticket2.createdAt
+                    }
+                    
+                    // Update foundCustomerInfo
+                    self.foundCustomerInfo = CustomerSearchInfo(
+                        id: ticket.customerId,
+                        name: ticket.customerName,
+                        phone: searchText
+                    )
+                    
+                    print("""
+                        Updated customer info:
+                        - ID: \(ticket.customerId)
+                        - Name: \(ticket.customerName)
+                        - Total Tickets: \(self.customerTickets.count)
+                        """)
+                } else {
+                    print("No ticket found in response")
+                    showError("No ticket found with this number")
+                }
             } else {
                 print("Performing phone number search")
                 let response = try await NetworkService.shared.searchCustomerInfoByPhone(searchText)
@@ -49,11 +101,13 @@ class StatusCheckViewModel: BaseViewModel {
                     let customerId = firstResult.table._id
                     print("Found customer ID: \(customerId)")
                     
-                    let ticketsData = try await NetworkService.shared.getTicketsByCustomerId(customerId)
+                    self.foundCustomerInfo = CustomerSearchInfo(
+                        id: customerId,
+                        name: "\(firstResult.table._source.table.firstname) \(firstResult.table._source.table.lastname)",
+                        phone: searchText
+                    )
                     
-                    if let jsonString = String(data: ticketsData, encoding: .utf8) {
-                        print("Raw tickets response: \(jsonString)")
-                    }
+                    let ticketsData = try await NetworkService.shared.getTicketsByCustomerId(customerId)
                     
                     let decoder = JSONDecoder()
                     let dateFormatter = DateFormatter()
@@ -63,12 +117,11 @@ class StatusCheckViewModel: BaseViewModel {
                     print("Fetching tickets for customer")
                     let ticketsResponse = try decoder.decode(TicketsResponse.self, from: ticketsData)
                     
-                    // Add debug prints for problem_type
-                    for ticket in ticketsResponse.tickets {
-                        print("Ticket #\(ticket.number) - Problem Type: \(String(describing: ticket.problem_type))")
+                    // Sort tickets by creation date (newest first)
+                    self.customerTickets = ticketsResponse.tickets.sorted {
+                        $0.createdAt > $1.createdAt
                     }
                     
-                    self.customerTickets = ticketsResponse.tickets
                     print("Found \(self.customerTickets.count) tickets")
                     self.ticket = nil
                 } else {
@@ -87,10 +140,6 @@ class StatusCheckViewModel: BaseViewModel {
         stopLoading()
     }
 }
-
-
-
-
 
 struct TicketsResponse: Codable {
     let tickets: [TicketDetails]

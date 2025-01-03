@@ -11,8 +11,9 @@ struct TicketTrackerView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \CustomerInformation.timestamp, order: .reverse) private var customerInfo: [CustomerInformation]
     @StateObject private var viewModel = StatusCheckViewModel()
-    @State private var showingSearchView = false
     @State private var showingNewSearchAlert = false
+    @State private var isResetting = false
+    @FocusState private var isSearchFocused: Bool
     
     var body: some View {
         ZStack {
@@ -20,114 +21,199 @@ struct TicketTrackerView: View {
             
             ScrollView {
                 VStack(spacing: 20) {
-                    if let lastCustomer = customerInfo.first {
-                        // Welcome Header
-                        WelcomeHeader(
-                            customerName: lastCustomer.customerName,
-                            showNewSearchAlert: $showingNewSearchAlert
-                        )
-                        
-                        // Tickets List
-                        VStack(spacing: 16) {
-                            if viewModel.isLoading {
-                                VStack(spacing: 12) {
-                                    ForEach(0..<3, id: \.self) { _ in
-                                        TicketPlaceholderRow()
+                    if !isResetting {
+                        if let lastCustomer = customerInfo.first {
+                            // Welcome Header with New Search Button
+                            VStack(spacing: 16) {
+                                HStack {
+                                    Text("Your Tickets")
+                                        .font(.title2.bold())
+                                    
+                                    Spacer()
+                                    
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            resetView()
+                                        }
+                                    } label: {
+                                        Label("New Search", systemImage: "magnifyingglass")
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(Color.blue)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(8)
                                     }
                                 }
                                 .padding(.horizontal)
-                            } else if !viewModel.customerTickets.isEmpty {
-                                // This is where we show the tickets
-                                ForEach(viewModel.customerTickets, id: \.id) { ticket in
-                                    ImprovedTicketRow(ticket: ticket)
-                                        .padding(.horizontal)
-                                }
-                            } else {
-                                LoadingView()
-                                    .onAppear {
-                                        Task {
-                                            print("Loading tickets for phone: \(lastCustomer.phoneNumber)")
-                                            viewModel.searchText = lastCustomer.phoneNumber
-                                            await viewModel.searchTicket()
+                                
+                                Text("Welcome back, \(lastCustomer.customerName)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            // Tickets List
+                            VStack(spacing: 16) {
+                                if viewModel.isLoading {
+                                    VStack(spacing: 12) {
+                                        ForEach(0..<3, id: \.self) { _ in
+                                            TicketPlaceholderRow()
                                         }
                                     }
+                                    .padding(.horizontal)
+                                } else if !viewModel.customerTickets.isEmpty {
+                                    ForEach(viewModel.customerTickets, id: \.id) { ticket in
+                                        NavigationLink(destination: TicketDetailsCard(ticket: ticket)) {
+                                            ImprovedTicketRow(ticket: ticket)
+                                                .padding(.horizontal)
+                                        }
+                                    }
+                                } else {
+                                    LoadingView()
+                                        .onAppear {
+                                            if viewModel.customerTickets.isEmpty {
+                                                Task {
+                                                    viewModel.searchText = lastCustomer.phoneNumber
+                                                    await viewModel.searchTicket()
+                                                }
+                                            }
+                                        }
+                                }
+                            }
+                        } else {
+                            // Search View
+                            VStack(spacing: 16) {
+                                Text("Check Ticket Status")
+                                    .font(.headline)
+                                    .foregroundColor(.gray)
+                                
+                                SearchField(
+                                    text: $viewModel.searchText,
+                                    placeholder: "Enter ticket # or phone number",
+                                    icon: viewModel.searchText.count == 5 ? "ticket" : "phone",
+                                    keyboardType: .numberPad,
+                                    isValid: !viewModel.searchText.isEmpty,
+                                    isFocused: $isSearchFocused  // Change this
+                                ) {
+                                    Task {
+                                        await viewModel.searchTicket()
+                                        if !viewModel.customerTickets.isEmpty {
+                                            storeCustomerInfo()
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 15)
+                                        .fill(AppTheme.backgroundColor)
+                                        .shadow(color: AppTheme.cardShadow, radius: 5)
+                                )
+                                .padding(.horizontal)
                             }
                         }
                     } else {
-                        // First-time user view
-                        NewCustomerView(
-                            viewModel: viewModel,
-                            onTicketsFound: storeCustomerInfo
-                        )
+                        // Transition view while resetting
+                        VStack(spacing: 16) {
+                            Text("Check Ticket Status")
+                                .font(.headline)
+                                .foregroundColor(.gray)
+                            
+                            SearchField(
+                                text: $viewModel.searchText,
+                                placeholder: "Enter ticket # or phone number",
+                                icon: viewModel.searchText.count == 5 ? "ticket" : "phone",
+                                keyboardType: .numberPad,
+                                isValid: !viewModel.searchText.isEmpty,
+                                isFocused: $isSearchFocused
+                            ) {
+                                Task {
+                                    await viewModel.searchTicket()
+                                    if !viewModel.customerTickets.isEmpty {
+                                        storeCustomerInfo()
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 15)
+                                    .fill(AppTheme.backgroundColor)
+                                    .shadow(color: AppTheme.cardShadow, radius: 5)
+                            )
+                            .padding(.horizontal)
+                        }
+                        .transition(.move(edge: .leading).combined(with: .opacity))
                     }
                 }
                 .padding(.top)
             }
         }
-        .sheet(isPresented: $showingSearchView) {
-            DifferentTicketSearchView { newTickets in
-                if !newTickets.isEmpty,
-                   let firstTicket = newTickets.first {
-                    storeNewCustomerInfo(
-                        phoneNumber: viewModel.searchText,
-                        customerID: firstTicket.customerId,
-                        customerName: firstTicket.customerName
-                    )
-                    viewModel.customerTickets = newTickets
-                    showingSearchView = false
-                }
-            }
-        }
-        .alert("Check Different Ticket?", isPresented: $showingNewSearchAlert) {
-            Button("New Search") {
-                showingSearchView = true
-            }
-            Button("Cancel", role: .cancel) {}
-        }
-        .navigationTitle("Your Tickets")
     }
-    private func storeNewCustomerInfo(phoneNumber: String, customerID: Int, customerName: String) {
-        // Clear existing data
+    
+    private func resetView() {
+        // Clear stored data
         customerInfo.forEach { modelContext.delete($0) }
+        try? modelContext.save()
         
-        // Store new customer information
-        let newCustomer = CustomerInformation(
-            phoneNumber: phoneNumber,
-            customerID: customerID,
-            customerName: customerName
-        )
+        // Reset view model
+        viewModel.clearSearch()
         
-        modelContext.insert(newCustomer)
+        // Trigger animation
+        withAnimation(.easeInOut(duration: 0.3)) {
+            isResetting = true
+        }
         
-        do {
-            try modelContext.save()
-            print("Successfully stored new customer info - Phone: \(phoneNumber), Name: \(customerName)")
-        } catch {
-            print("Error saving context: \(error)")
+        // Reset after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isResetting = false
+            }
         }
     }
     
     private func storeCustomerInfo() {
-        guard !viewModel.customerTickets.isEmpty,
-              let firstTicket = viewModel.customerTickets.first else {
-            print("No tickets to store")
-            return
+        if let foundInfo = viewModel.foundCustomerInfo {
+            // Clear existing data
+            customerInfo.forEach { modelContext.delete($0) }
+            try? modelContext.save()
+            
+            // Store new customer
+            let newCustomer = CustomerInformation(
+                phoneNumber: foundInfo.phone,
+                customerID: foundInfo.id,
+                customerName: foundInfo.name
+            )
+            
+            modelContext.insert(newCustomer)
+            try? modelContext.save()
         }
-        
-        storeNewCustomerInfo(
-            phoneNumber: viewModel.searchText,
-            customerID: firstTicket.customerId,
-            customerName: firstTicket.customerName
-        )
     }
 }
 
 struct DifferentTicketSearchView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = StatusCheckViewModel()
+    @ObservedObject var mainViewModel: StatusCheckViewModel
     @FocusState private var isSearchFocused: Bool
     let onTicketsFound: ([TicketDetails]) -> Void
     
+    init(mainViewModel: StatusCheckViewModel, onTicketsFound: @escaping ([TicketDetails]) -> Void) {
+        self.mainViewModel = mainViewModel
+        self.onTicketsFound = onTicketsFound
+        _viewModel = StateObject(wrappedValue: StatusCheckViewModel())
+    }
+    
+    private func handleSuccess() {
+        if !viewModel.customerTickets.isEmpty {
+            mainViewModel.clearSearch() // Clear main viewModel
+            onTicketsFound(viewModel.customerTickets)
+            mainViewModel.foundCustomerInfo = viewModel.foundCustomerInfo
+            dismiss()
+        } else if let ticket = viewModel.ticket {
+            mainViewModel.clearSearch() // Clear main viewModel
+            onTicketsFound([ticket])
+            mainViewModel.foundCustomerInfo = viewModel.foundCustomerInfo
+            dismiss()
+        }
+    }
     var body: some View {
         NavigationStack {
             ZStack {
@@ -159,16 +245,32 @@ struct DifferentTicketSearchView: View {
                     ScrollView {
                         if viewModel.isLoading {
                             LoadingView()
-                        } else if !viewModel.customerTickets.isEmpty {
+                        } else if !viewModel.customerTickets.isEmpty || viewModel.ticket != nil {
                             VStack(spacing: 16) {
-                                ForEach(viewModel.customerTickets, id: \.id) { ticket in
-                                    TicketResultCard(ticket: ticket)
-                                        .padding(.horizontal)
+                                if !viewModel.customerTickets.isEmpty {
+                                    ForEach(viewModel.customerTickets, id: \.id) { ticket in
+                                        NavigationLink(destination: TicketDetailsCard(ticket: ticket)) {
+                                            TicketResultCard(ticket: ticket)
+                                                .padding(.horizontal)
+                                        }
+                                    }
+                                } else if let ticket = viewModel.ticket {
+                                    NavigationLink(destination: TicketDetailsCard(ticket: ticket)) {
+                                        TicketResultCard(ticket: ticket)
+                                            .padding(.horizontal)
+                                    }
                                 }
                             }
                             .padding(.vertical)
                             .onChange(of: viewModel.customerTickets) { _, tickets in
-                                onTicketsFound(tickets)
+                                if !tickets.isEmpty {
+                                    handleSuccess()
+                                }
+                            }
+                            .onChange(of: viewModel.ticket) { _, ticket in
+                                if ticket != nil {
+                                    handleSuccess()
+                                }
                             }
                         } else {
                             EmptySearchState()
@@ -180,7 +282,10 @@ struct DifferentTicketSearchView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
+                    Button(action: {
+                        viewModel.clearSearch()
+                        dismiss()
+                    }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.gray)
                     }
@@ -189,6 +294,7 @@ struct DifferentTicketSearchView: View {
         }
     }
 }
+
 
 struct TicketResultCard: View {
     let ticket: TicketDetails

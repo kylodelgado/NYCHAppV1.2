@@ -10,16 +10,16 @@ import SwiftUI
 struct LoadingView: View {
     var body: some View {
         ZStack {
-            Color.black.opacity(0.4)
+            Color(red: 0.93, green: 0.95, blue: 0.97)
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {
                 ProgressView()
                     .scaleEffect(1.5)
-                    .tint(.white)
+                    .tint(.black)
                 
                 Text("Loading...")
-                    .foregroundColor(.white)
+                    .foregroundColor(.black.opacity(0.5))
                     .font(.headline)
             }
             .padding(30)
